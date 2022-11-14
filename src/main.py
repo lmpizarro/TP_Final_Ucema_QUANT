@@ -152,6 +152,14 @@ def valor_bono_disc(pair_pagos, tasa, pagos_p_a=2):
         valor += v 
     return valor
 
+def valor_time_bono_disc(pair_pagos, tasa, pagos_p_a=2):
+    valor = 0
+    for e in pair_pagos:
+        v = e[0] * e[1]/np.power(1+tasa/pagos_p_a, pagos_p_a*e[0])
+        valor += v 
+    return valor
+
+
 def get_nominals(bono, today):
 
     pagos = bono["pagos"]
@@ -180,15 +188,29 @@ def curva_v_r(bono, fecha):
     for i, r in enumerate(rs):
         vs[i] = valor_bono_disc(pair_time_pagos, r)
     return rs, vs
- 
+
+
+def duration(bono_key, fecha, tasa):
+    bono = datos_bonos[bono_key]
+    pagos_time = get_nominals(bono, fecha)
+    tPrecios = valor_time_bono_disc(pagos_time, tasa)
+    precio = valor_bono_disc(pagos_time, tasa)
+    duration = tPrecios / precio
+
+    return duration
+
+
 def corr_bono(bono, df_merge):
     estructura = datos_bonos[bono.upper()]
     tir = np.zeros(df_merge.shape[0]) 
+    durt = np.zeros(df_merge.shape[0]) 
     for i,r in df_merge.iterrows():
         tasa, precio = curva_v_r(estructura, r.fecha)
         ftir_precio = Fit.polyModel(precio, tasa)
         tir[i] = ftir_precio(r.al30d)
+        durt[i] = duration(bono.upper(), r.fecha, tir[i])
     df_merge[f'tir_{bono}d'] = tir
+    df_merge[f'dur_{bono}d'] = durt
 
     m_corr = df_merge[['mayorista', 'merval', 'ccl', 'EEM', f'{bono}d', f'{bono}ccl', 
          'riesgo', '^TNX', '^TYX', '^FVX', '^IRX', f'tir_{bono}d']].corr()
@@ -227,6 +249,7 @@ def curva_dia_pago_mas_uno(bono_key):
         plt.plot(rs, vs)
     plt.show()
 
+
 if __name__ == '__main__':
 
     # df_merge = create_df_wrk()
@@ -235,6 +258,8 @@ if __name__ == '__main__':
     
     with open('df_wrk.pkl', 'rb') as f:
         df_merge = pickle.load(f)
+    
+    bono_key = 'AL30'
 
     fig, ax = plt.subplots()
     ax.plot(df_merge.fecha, df_merge.al30d, 'g', label='al30d')
@@ -279,6 +304,13 @@ if __name__ == '__main__':
     m_corr_al41 = corr_bono(bono, df_merge)
 
     print(m_corr_al41)
+
+    print(df_merge.tail())
+    plt.plot(df_merge.dur_al30d)
+    plt.show()
+    plt.plot(df_merge.dur_al41d)
+    plt.show()
+    exit()
 
 
     for bono in ['al30d', 'al41d']:
