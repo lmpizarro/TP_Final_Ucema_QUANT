@@ -1,4 +1,5 @@
 from datetime import datetime
+from datetime import timedelta, date
 from scipy import stats
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -193,12 +194,38 @@ def corr_bono(bono, df_merge):
 
     return m_corr
 
+def dia_de_pago_mas_N(bono, days=1):
+    pagos = bono['pagos']
+
+    l_d_p = []
+    for pago in pagos:
+        dia_de_pago = pd.Timestamp(datetime.strptime(pago[0], "%d/%m/%y").date())
+        mas_uno = dia_de_pago + timedelta(days=days)
+        l_d_p.append(mas_uno)
+    return l_d_p
+
+def curva_dia_pago_mas_uno(bono_key):
+    with open('bonos.pkl', 'rb') as f:
+        bonos = pickle.load(f)
+
+    bono = bonos[bono_key]
+    rs = np.linspace(0.0001, 1.0001, 100)
+    vs = np.zeros(100)
+    l_d_p = dia_de_pago_mas_N(bono)
+    x = []
+    for dte in l_d_p[:-1]:
+        pair_pagos = get_nominals(bono, dte)
+        x.append(len(pair_pagos))
+        for i, r in enumerate(rs):
+            vs[i] = valor_bono_disc(pair_pagos, r)
+        plt.plot(rs, vs)
+    plt.show()
 
 if __name__ == '__main__':
-   
-    df_merge = create_df_wrk()
-    with open('df_wrk.pkl', 'wb') as f:
-         pickle.dump(df_merge, f, protocol=pickle.HIGHEST_PROTOCOL )
+
+    # df_merge = create_df_wrk()
+    # with open('df_wrk.pkl', 'wb') as f:
+    #     pickle.dump(df_merge, f, protocol=pickle.HIGHEST_PROTOCOL )
     
     with open('df_wrk.pkl', 'rb') as f:
         df_merge = pickle.load(f)
@@ -211,12 +238,15 @@ if __name__ == '__main__':
 
     ax.legend(handlelength=4)
     plt.show()
+    
 
     fig, ax = plt.subplots()
     ax.plot(df_merge.fecha, df_merge.gd30d / df_merge.al30d, 'r', label='ratio gd30d:al30d')
 
     ax.legend(handlelength=4)
     plt.show()
+    
+    curva_dia_pago_mas_uno('AL30')
 
     fig, ax = plt.subplots()
     ax.plot(df_merge.fecha, df_merge.al41d, 'g', label='al41d')
@@ -232,6 +262,8 @@ if __name__ == '__main__':
 
     ax.legend(handlelength=4)
     plt.show()
+
+    curva_dia_pago_mas_uno('AL41')
 
     bono = 'al30'
     m_corr_al30 = corr_bono(bono, df_merge)
