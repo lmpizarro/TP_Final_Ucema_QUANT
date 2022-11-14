@@ -9,6 +9,10 @@ import numpy as np
 
 DAYS_IN_A_YEAR = 364
 
+with open('bonos.pkl', 'rb') as f:
+    datos_bonos = pickle.load(f)
+
+
 import scipy.optimize
 
 class Fit:
@@ -178,10 +182,7 @@ def curva_v_r(bono, fecha):
     return rs, vs
  
 def corr_bono(bono, df_merge):
-    with open('bonos.pkl', 'rb') as f:
-        bonos = pickle.load(f)
-
-    estructura = bonos[bono.upper()]
+    estructura = datos_bonos[bono.upper()]
     tir = np.zeros(df_merge.shape[0]) 
     for i,r in df_merge.iterrows():
         tasa, precio = curva_v_r(estructura, r.fecha)
@@ -194,6 +195,12 @@ def corr_bono(bono, df_merge):
 
     return m_corr
 
+def draw_cash_flow(bono):
+    cash_flow = [e[1] + e[2] for e in bono['pagos']]
+    plt.bar(list(range(1, len(cash_flow)+1)), cash_flow)
+    plt.show()
+
+
 def dia_de_pago_mas_N(bono, days=1):
     pagos = bono['pagos']
 
@@ -204,11 +211,10 @@ def dia_de_pago_mas_N(bono, days=1):
         l_d_p.append(mas_uno)
     return l_d_p
 
-def curva_dia_pago_mas_uno(bono_key):
-    with open('bonos.pkl', 'rb') as f:
-        bonos = pickle.load(f)
 
-    bono = bonos[bono_key]
+def curva_dia_pago_mas_uno(bono_key):
+    bono = datos_bonos[bono_key]
+    draw_cash_flow(bono)
     rs = np.linspace(0.0001, 1.0001, 100)
     vs = np.zeros(100)
     l_d_p = dia_de_pago_mas_N(bono)
